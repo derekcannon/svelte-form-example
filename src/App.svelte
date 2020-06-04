@@ -1,16 +1,19 @@
 <script>
 	import Tailwindcss from "./Tailwindcss.svelte";
+	import Form from "./Form.svelte";
 </script>
 
 <style>
-	.description {
-		@apply text-xl text-gray-700;
+	:global(body) {
+		@apply p-10 bg-gray-300;
 	}
 </style>
 
+<Tailwindcss />
+
 <main>
-	<div class="text-6xl text-orange-500">Hello there!</div>
-	<div class="description">Visit the <a href="https://svelte.dev/tutorial">Svelte tutorial</a> to learn how to build Svelte apps.</div>
+	<div class="border border-gray-400 p-4 bg-white">
+		<Form />
+	</div>
 </main>
 
-<Tailwindcss />
