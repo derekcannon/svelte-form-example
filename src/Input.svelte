@@ -1,8 +1,6 @@
 <script>
   export let label;
-  export let value;
-  export let blur;
-  export let error;
+  export let field;
 </script>
 
 <div class="pb-4">
@@ -15,10 +13,15 @@
       <input
         class="w-full box-border border border-gray-400 focus:border-blue-500
         pl-1 pr-1"
-        bind:value
-        on:blur />
-      {#if error}
-        <div class="text-red-500 italic text-sm">{error}</div>
+        value={$field.value}
+        on:change={event => field.change(event.target.value)}
+        on:focus={field.focus}
+        on:blur={field.blur} />
+
+      {#if $field.errors}
+        <div class="text-red-500 italic text-sm">
+          {#each $field.errors as error}{error}{/each}
+        </div>
       {/if}
     </div>
   </label>

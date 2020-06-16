@@ -1,51 +1,22 @@
 <script>
   import { writable } from "svelte/store";
-  import { ValidationError } from "yup";
-  import * as yup from "yup";
   import Input from "./Input.svelte";
+  import { createField } from "./field";
+  import { required } from "./validations";
 
-  const schema = yup.object().shape({
-    firstName: yup.string().required(),
-    lastName: yup.string().required()
-  });
-
-  const firstName = writable("Derek");
-  const lastName = writable("Cannon");
-  let errors = {};
+  const firstName = createField("Derek", [required]);
+  const lastName = createField("Cannon", [required]);
 
   $: formState = {
     firstName: $firstName,
     lastName: $lastName
   };
-
-  async function validate() {
-    try {
-      await schema.validate(formState, { abortEarly: false }).then(() => {
-        errors = {};
-      });
-    } catch (yupErrors) {
-      if (yupErrors instanceof ValidationError) {
-        errors = yupErrors.inner.reduce((acc, validationError) => {
-          acc[validationError.path] = validationError.message;
-          return acc;
-        }, {});
-      }
-    }
-  }
 </script>
 
 <div class="text-orange-500 text-2xl pb-4">My Form</div>
 
-<Input
-  label="First name"
-  bind:value={$firstName}
-  on:blur={validate}
-  error={errors.firstName} />
-<Input
-  label="Last name"
-  bind:value={$lastName}
-  on:blur={validate}
-  error={errors.lastName} />
+<Input label="First name" field={firstName} />
+<Input label="Last name" field={lastName} />
 
 <div class="mt-4">
   <div class="text-orange-500 text-lg pb-4">Form State</div>
