@@ -1,131 +1,87 @@
 <script>
   import { onMount } from "svelte";
-  import { writable, derived } from "svelte/store";
+  import { writable } from "svelte/store";
+  import * as yup from "yup";
   import Input from "./Input.svelte";
   import { createField } from "./field";
   import { required, requiredWhen } from "./validations";
+  import yupResolver from "./yupResolver";
+
+  const schema = yup.object().shape({
+    contactName: yup.string().required(),
+    contactPhone: yup.string().when("contactName", {
+      is: value => value,
+      then: yup
+        .string()
+        .required("Phone required when contact entered")
+        .min(8)
+    })
+  });
+
+  const validate = yupResolver({ schema });
 
   const values = writable({
-    firstName: "Derek",
-    lastName: ""
+    contactName: "Derek Cannon",
+    contactPhone: ""
   });
 
   const visited = writable({
-    firstName: false,
-    lastName: false
-  });
-
-  const validations = writable({
-    firstName: [[required, null, ["lastName"]]], // [validationFn, depFields[], affectedFields]
-    lastName: [[requiredWhen, ["firstName"]]]
+    contactName: false,
+    contactPhone: false
   });
 
   const errors = writable({
-    firstName: null,
-    lastName: null
+    contactName: null,
+    contactPhone: null
   });
 
-  function validateField(fieldName, validation) {
-    const [validationFn, depFieldNames, affectedFieldNames] = validation;
-    let depErrorMessages = {};
-    let depValues = [];
-
-    if (depFieldNames) {
-      depValues = depFieldNames.map(depFieldName => [
-        depFieldName,
-        $values[depFieldName]
-      ]);
-    }
-
-    if (affectedFieldNames) {
-      const depFieldValidations = affectedFieldNames.map(affectedFieldName => {
-        const depValidations = $validations[affectedFieldName];
-        return [
-          affectedFieldName,
-          depValidations.filter(validation => {
-            const [_, depFieldName = []] = validation;
-            return depFieldName.includes(fieldName);
-          })
-        ];
-      });
-
-      depErrorMessages = depFieldValidations.reduce((acc, fieldValidations) => {
-        const [fieldName, validations] = fieldValidations;
-        acc[fieldName] = validations.map(validation =>
-          validateField(fieldName, validation)
-        );
-        return acc;
-      }, {});
-    }
-
-    return {
-      [fieldName]: validationFn($values[fieldName], ...depValues),
-      ...depErrorMessages
-    };
-  }
-
   function validateForm() {
-    Object.keys($values).forEach(fieldName => {
-      const validations = $validations[fieldName];
-      if (!validations || !validations.length) return;
-
-      const messages = validations
-        .flatMap(validation => validateField(fieldName, validation))
-        .filter(Boolean);
-
-      debugger;
-      $errors[fieldName] = messages.length ? messages[fieldName] : null;
-    });
+    validate($values).then(errorMessages => ($errors = errorMessages));
   }
+
+  const blur = fieldName => () => {
+    validateForm(); // TODO: eventually change this to field-only validation
+    $visited[fieldName] = true;
+  };
 
   onMount(() => {
     validateForm();
   });
-
-  function blur(fieldName) {
-    const validations = $validations[fieldName];
-    if (!validations) return;
-
-    return validations
-      .map(validation => validateField(fieldName, validation))
-      .filter(Boolean);
-  }
 </script>
 
 <div class="text-orange-500 text-2xl pb-4">My Form</div>
 
-<input
-  bind:value={$values.firstName}
-  on:blur={() => {
-    const messages = blur('firstName');
-    $errors.firstName = messages.length ? messages : null;
-    $visited.firstName = true;
-  }}
-  class="w-full box-border border border-gray-400 focus:border-blue-500 pl-1
-  pr-1" />
-{#if $errors.firstName}{$errors.firstName.join(', ')}{/if}
+<Input
+  label="Contact name"
+  bind:value={$values.contactName}
+  visited={$visited.contactName}
+  on:blur={blur('contactName')}
+  errorMessage={$errors.contactName} />
 
-<input
-  bind:value={$values.lastName}
-  on:blur={() => {
-    const messages = blur('lastName');
-    $errors.lastName = messages.length ? messages : null;
-    $visited.lastName = true;
-  }}
-  class="w-full box-border border border-gray-400 focus:border-blue-500 pl-1
-  pr-1" />
-{#if $errors.lastName}{$errors.lastName.join(', ')}{/if}
+<Input
+  label="Contact phone"
+  bind:value={$values.contactPhone}
+  visited={$visited.contactPhone}
+  on:blur={blur('contactPhone')}
+  errorMessage={$errors.contactPhone} />
 
 <div class="mt-4">
-  <div class="text-orange-500 text-lg pb-4">Form Errors</div>
+  <div class="text-orange-500 text-lg pb-4">Errors</div>
   <pre class="bg-gray-700 text-white p-4">
     {JSON.stringify($errors, null, 2)}
   </pre>
 </div>
 
 <div class="mt-4">
-  <div class="text-orange-500 text-lg pb-4">Form State</div>
+  <div class="text-orange-500 text-lg pb-4">Values</div>
   <pre class="bg-gray-700 text-white p-4">
     <pre>{JSON.stringify($values, null, 2)}</pre>
+  </pre>
+</div>
+
+<div class="mt-4">
+  <div class="text-orange-500 text-lg pb-4">Visited</div>
+  <pre class="bg-gray-700 text-white p-4">
+    <pre>{JSON.stringify($visited, null, 2)}</pre>
   </pre>
 </div>

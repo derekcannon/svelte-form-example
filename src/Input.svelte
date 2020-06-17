@@ -1,6 +1,8 @@
 <script>
   export let label;
-  export let field;
+  export let value;
+  export let errorMessage;
+  export let visited;
 </script>
 
 <div class="pb-4">
@@ -13,14 +15,12 @@
       <input
         class="w-full box-border border border-gray-400 focus:border-blue-500
         pl-1 pr-1"
-        value={$field.value}
-        on:change={event => field.change(event.target.value)}
-        on:focus={field.focus}
-        on:blur={field.blur} />
+        bind:value
+        on:blur />
 
-      {#if $field.errors}
+      {#if visited && errorMessage}
         <div class="text-red-500 italic text-sm">
-          {#each $field.errors as error}{error}{/each}
+          {Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage}
         </div>
       {/if}
     </div>
