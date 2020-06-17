@@ -1,14 +1,18 @@
 import { writable } from "svelte/store";
 
-export function createField(defaultValue, validations = []) {
+export function createField(name, defaultValue, validations = []) {
   const { subscribe, update, set } = writable({
+    name,
     defaultValue,
     value: defaultValue,
     visited: false,
     focused: false,
     pristine: true,
     errors: null,
+    validations,
   });
+
+  console.log("field created");
 
   return {
     subscribe,
@@ -21,7 +25,8 @@ export function createField(defaultValue, validations = []) {
       })),
     blur: () =>
       update((state) => {
-        const errors = validations.map((fn) => fn(state.value)).filter(Boolean);
+        // const errors = validations.map((fn) => fn(state.value)).filter(Boolean);
+        const errors = [];
 
         return {
           ...state,
