@@ -3,12 +3,20 @@
   import { writable } from "svelte/store";
   import * as yup from "yup";
   import Input from "./Input.svelte";
-  import { createField } from "./field";
-  import { required, requiredWhen } from "./validations";
+  import { createForm } from "./formStore";
   import yupResolver from "./yupResolver";
 
   const schema = yup.object().shape({
-    contactName: yup.string().required(),
+    companyName: yup.string().required(),
+    contacts: yup.array().of(
+      yup.object().shape({
+        name: yup.string().required(),
+        phone: yup
+          .string()
+          .required()
+          .min(8)
+      })
+    ),
     contactPhone: yup.string().when("contactName", {
       is: value => value,
       then: yup
@@ -20,20 +28,19 @@
 
   const validate = yupResolver({ schema });
 
-  const values = writable({
-    contactName: "Derek Cannon",
-    contactPhone: ""
-  });
-
-  const visited = writable({
-    contactName: false,
-    contactPhone: false
-  });
-
-  const errors = writable({
-    contactName: null,
-    contactPhone: null
-  });
+  const { values, visited, errors } = createForm([
+    {
+      name: "companyName",
+      value: "Derek Cannon Inc"
+    },
+    {
+      name: "contacts",
+      fields: [
+        { name: "name", value: "Derek" },
+        { name: "phone", value: "555-555-5555" }
+      ]
+    }
+  ]);
 
   function validateForm() {
     validate($values).then(errorMessages => ($errors = errorMessages));
@@ -41,29 +48,54 @@
 
   const blur = fieldName => () => {
     validateForm(); // TODO: eventually change this to field-only validation
-    $visited[fieldName] = true;
+
+    const isNestedField = fieldName.match(/\./);
+
+    if (!isNestedField) {
+      $visited[fieldName] = true;
+    } else {
+      // TODO: Fix nested fields
+    }
   };
 
+  function addContact() {
+    $values.contacts = [...$values.contacts, { name: "", phone: "" }];
+    $visited.contacts = [...$visited.contacts, { name: false, phone: false }];
+  }
+
   onMount(() => {
-    validateForm();
+    // validateForm();
   });
 </script>
 
 <div class="text-orange-500 text-2xl pb-4">My Form</div>
 
 <Input
-  label="Contact name"
-  bind:value={$values.contactName}
-  visited={$visited.contactName}
-  on:blur={blur('contactName')}
-  errorMessage={$errors.contactName} />
+  label="Company name"
+  bind:value={$values.companyName}
+  visited={$visited.companyName}
+  on:blur={blur('companyName')}
+  errorMessage={$errors.companyName} />
 
-<Input
-  label="Contact phone"
-  bind:value={$values.contactPhone}
-  visited={$visited.contactPhone}
-  on:blur={blur('contactPhone')}
-  errorMessage={$errors.contactPhone} />
+{#each $values.contacts as contact, index}
+  <Input
+    label="Contact name"
+    bind:value={contact.name}
+    visited={true}
+    on:blur={blur(`contacts[${index}].name`)}
+    errorMessage={$errors[`contacts[${index}].name`]} />
+
+  <Input
+    label="Contact phone"
+    bind:value={contact.phone}
+    visited={true}
+    on:blur={blur(`contacts[${index}].phone`)}
+    errorMessage={$errors[`contacts[${index}].phone`]} />
+{/each}
+
+<button class="border border-blue-500 px-4 py-2" on:click={addContact}>
+  Add contact
+</button>
 
 <div class="mt-4">
   <div class="text-orange-500 text-lg pb-4">Errors</div>
