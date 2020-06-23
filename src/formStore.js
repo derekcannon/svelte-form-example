@@ -1,50 +1,39 @@
-import { writable } from "svelte/store";
+import { writable, derived } from "svelte/store";
 
 export function addField(defaultValue) {
-  const value = writable(defaultValue);
-  const visited = writable(false);
-
-  // const field = writable({
-  // value: writable(defaultValue),
-  // visited: false,
-  // });
-
-  function blur() {
-    visited.update(() => true);
-  }
-
-  // function set(field) {
-  // value.update(() => field);
-  // }
-
-  return {
-    // subscribe: field.subscribe,
-    blur,
-    // set,
-    value,
-    visited: visited,
-  };
+  return writable(defaultValue);
 }
 
-function buildFields(schema) {
-  return schema.reduce((acc, { name, value, fields: nestedFields }) => {
-    const x = {
-      ...acc,
-      ...{
-        [name]: nestedFields ? [buildFields(nestedFields)] : addField(value),
-      },
-    };
-
-    console.log(x);
-    return x;
-  }, {});
+function buildStructure(schema, value) {
+  return schema.reduce(
+    (acc, { name, value: fieldValue, fields: nestedFields }) => {
+      return {
+        ...acc,
+        ...{
+          [name]: nestedFields
+            ? [buildStructure(nestedFields)]
+            : addField(value != undefined ? value : fieldValue),
+        },
+      };
+    },
+    {}
+  );
 }
 
 export function createForm(schema) {
-  const fields = writable({});
+  const defaultValues = writable({});
+  const values = writable({});
+  const visited = writable({});
   const errors = writable({});
 
-  fields.set(buildFields(schema));
+  defaultValues.set(buildStructure(schema));
+  values.set(buildStructure(schema));
+  visited.set(buildStructure(schema, false));
 
-  return { fields, errors };
+  return {
+    defaultValues,
+    values,
+    visited,
+    errors,
+  };
 }

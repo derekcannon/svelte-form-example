@@ -6,16 +6,16 @@
 </script>
 
 <div class="pb-4">
-  <label class="flex">
+  <label>
     {#if label}
-      <span class="whitespace-no-wrap pr-2">{label}:</span>
+      <div class="whitespace-no-wrap pb-1">{label}:</div>
     {/if}
 
     <div class="w-full">
       <input
         class="w-full box-border border border-gray-400 focus:border-blue-500
         pl-1 pr-1"
-        bind:value
+        bind:value={$value}
         on:blur />
 
       {#if visited && errorMessage}
