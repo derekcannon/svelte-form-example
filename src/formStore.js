@@ -1,39 +1,20 @@
-import { writable, derived } from "svelte/store";
+import { writable } from "svelte/store";
+import { makeField } from "./formHelpers";
 
-export function addField(defaultValue) {
-  return writable(defaultValue);
-}
-
-function buildStructure(schema, value) {
-  return schema.reduce(
-    (acc, { name, value: fieldValue, fields: nestedFields }) => {
-      return {
-        ...acc,
-        ...{
-          [name]: nestedFields
-            ? [buildStructure(nestedFields)]
-            : addField(value != undefined ? value : fieldValue),
+export default writable({
+  contacts: [
+    {
+      name: makeField("Joe Blows"),
+      contactMethods: [
+        {
+          type: makeField("phone"),
+          value: makeField(""),
         },
-      };
+        {
+          type: makeField("email"),
+          value: makeField("example@test.com"),
+        },
+      ],
     },
-    {}
-  );
-}
-
-export function createForm(schema) {
-  const defaultValues = writable({});
-  const values = writable({});
-  const visited = writable({});
-  const errors = writable({});
-
-  defaultValues.set(buildStructure(schema));
-  values.set(buildStructure(schema));
-  visited.set(buildStructure(schema, false));
-
-  return {
-    defaultValues,
-    values,
-    visited,
-    errors,
-  };
-}
+  ],
+});

@@ -1,108 +1,133 @@
 <script>
-  import { onMount } from "svelte";
-  import { writable } from "svelte/store";
-  import * as yup from "yup";
+  import { tick, onMount } from "svelte";
+  import {
+    makeField,
+    getValues,
+    checkValidity,
+    setAllVisited
+  } from "./formHelpers";
+  import form from "./formStore";
   import Input from "./Input.svelte";
-  import { createForm, addField } from "./formStore";
-  import yupResolver from "./yupResolver";
+  import Dropdown from "./Dropdown.svelte";
 
-  const schema = yup.object().shape({
-    companyName: yup.string().required(),
-    contacts: yup.array().of(
-      yup.object().shape({
-        name: yup.string().required(),
-        phone: yup
-          .string()
-          .required()
-          .min(8)
-      })
-    )
-    // contactPhone: yup.string().when("contactName", {
-    // is: value => value,
-    // then: yup
-    // .string()
-    // .required("Phone required when contact entered")
-    // .min(8)
-    // })
-  });
+  const contactMethodTypes = [
+    { value: "phone", label: "Phone" },
+    { value: "email", label: "E-mail" }
+  ];
 
-  const validate = yupResolver({ schema });
+  function validate() {
+    // Simplistic validation example
+    $form.contacts.forEach(contact => {
+      contact.name.errors = [];
+      if (!contact.name.value) contact.name.errors = ["Required"];
 
-  const { values, visited, errors } = createForm([
-    {
-      name: "companyName",
-      value: "Derek Cannon Inc"
-    },
-    {
-      name: "contacts",
-      fields: [
-        { name: "name", value: "Derek" },
-        { name: "phone", value: "555-555-5555" }
-      ]
-    }
-  ]);
+      contact.contactMethods.forEach(contactMethod => {
+        contactMethod.value.errors = [];
+        if (!contactMethod.value.value)
+          contactMethod.value.errors = ["Required"];
+      });
+    });
 
-  function validateForm() {
-    // validate($values).then(errorMessages => ($errors = errorMessages));
+    $form = $form; // update observable
+
+    isValid = checkValidity($form);
+    values = isValid ? getValues($form) : undefined;
   }
 
-  const blur = () => {
-    validateForm();
-  };
+  function submit() {
+    setAllVisited($form);
+    validate();
+  }
+
+  async function addContact() {
+    $form.contacts = [
+      ...$form.contacts,
+      {
+        name: makeField(),
+        contactMethods: [{ type: makeField("phone"), value: makeField() }]
+      }
+    ];
+    await tick();
+    $form.contacts[$form.contacts.length - 1].name.ref.focus();
+  }
+
+  async function addContactMethods(contactIndex) {
+    $form.contacts[contactIndex].contactMethods.push({
+      type: makeField("phone"),
+      value: makeField()
+    });
+    $form = $form;
+    await tick();
+    const methodsLength = $form.contacts[contactIndex].contactMethods.length;
+    $form.contacts[contactIndex].contactMethods[
+      methodsLength - 1
+    ].type.ref.focus();
+  }
+
+  let showFormState = false;
+  let isValid;
+  let values;
 
   onMount(() => {
-    // validateForm();
+    validate($form);
+    isValid = checkValidity($form);
   });
 </script>
 
-<div class="text-orange-500 text-2xl pb-4">My Form</div>
+<style>
+  .nested {
+    margin: 0.5rem;
+    border-left: 4px solid lightgray;
+    padding-left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+  }
 
-<div class="text-orange-500 text-lg pb-4">Company details</div>
+  .nested > * {
+    padding: 0.25rem;
+  }
 
-<Input
-  label="Company name"
-  value={$values.companyName}
-  visited={$visited.companyName} />
+  .contact-member {
+    display: flex;
+  }
+</style>
 
-<div class="text-orange-500 text-lg pb-4">Contacts</div>
+{#each $form.contacts as contact, contactIndex}
+  <div>
+    <Input label="Name" bind:value={contact.name} />
 
-{#each $values.contacts as contact, index}
-  <div class="rounded shadow-lg p-4">
-    <Input
-      label="Name"
-      value={contact.name}
-      visited={$visited.contacts[index].name} />
-    <Input
-      label="Phone"
-      value={contact.phone}
-      visited={$visited.contacts[index].phone} />
+    <div class="nested">
+      {#each contact.contactMethods as contactMethod}
+        <div class="contact-member">
+          <Dropdown
+            bind:value={contactMethod.type}
+            options={contactMethodTypes} />
+          <Input bind:value={contactMethod.value} />
+        </div>
+      {/each}
+      <div>
+        <button on:click={() => addContactMethods(contactIndex)}>
+          Add contact method
+        </button>
+      </div>
+    </div>
   </div>
 {/each}
 
-<div class="pt-4 flex flex-row-reverse">
-  <button
-    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-    Add contact
-  </button>
-</div>
+<button on:click={addContact}>Add contact</button>
 
-<div class="mt-4">
-  <div class="text-orange-500 text-lg pb-4">Errors</div>
-  <pre class="bg-gray-700 text-white p-4">
-    {JSON.stringify($errors, null, 2)}
-  </pre>
+<div>
+  <button on:click={submit}>Submit</button>
 </div>
+Form valid? {isValid}
+{#if values}
+  <pre>{JSON.stringify(values, null, 2)}</pre>
+{/if}
 
-<div class="mt-4">
-  <div class="text-orange-500 text-lg pb-4">Form State</div>
-  <pre class="bg-gray-700 text-white p-4">
-    <pre>{JSON.stringify($values, null, 2)}</pre>
-  </pre>
-</div>
-
-<div class="mt-4">
-  <div class="text-orange-500 text-lg pb-4">Visited</div>
-  <pre class="bg-gray-700 text-white p-4">
-    <pre>{JSON.stringify($visited, null, 2)}</pre>
-  </pre>
-</div>
+<label>
+  <input type="checkbox" bind:checked={showFormState} />
+  Show form state
+</label>
+{#if showFormState}
+  <pre>{JSON.stringify($form, null, 2)}</pre>
+{/if}
